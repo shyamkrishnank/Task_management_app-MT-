@@ -21,7 +21,7 @@ A simple task management application built with Django that allows users to crea
 
 1. **Clone the repository:**
     ```sh
-    git clone https://github.com/yourusername/task-management-app.git
+    git clone https://github.com/shyamkrishnank/Task_management_app-MT-.git
     cd task-management-app
     ```
 
