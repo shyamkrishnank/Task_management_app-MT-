@@ -1,0 +1,187 @@
+{% extends 'Base.html' %}
+
+{% block content %}
+
+<div class="container mt-5">
+    <div class="row mb-3">
+        <div class="col-md-6 text-left">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#AddTaskModal">
+                Add Task
+              </button> 
+         </div>
+    </div>
+
+    <!-- Filter Form -->
+    <div class="card">
+        <div class="card-body">
+            <form id="filterForm" method="POST" action='filtertask' class="form-inline d-flex justify-content-between">
+                {% csrf_token %}
+                <div class="d-flex">
+                    <div class="form-group mx-3">
+                        <label for="statusFilter" class="mr-2">Status</label>
+                        <select id="statusFilter" name="status" class="form-control">
+                            <option value="">All</option>
+                            <option {% if filter_data %} {% if filter_data.status == "Incomplete" %} selected {% endif %} {% endif %} value="Incomplete">Incomplete</option>
+                            <option {% if filter_data %} {% if filter_data.status == "Complete" %} selected {% endif %} {% endif %}  value="Complete">Complete</option>
+                        </select>
+                    </div>
+                    <div class="form-group mr-2">
+                        <label for="dueDateFilter" class="mr-2">Due Date</label>
+                        <input type="text" onfocus="(this.type='date')"  onblur="(this.type='text')" {% if filter_data.due_date  %} placeholder="{{ filter_data.due_date }}"   {% else %}  placeholder="YYY-MM-DD" {% endif %}  id="dueDateFilter" name="due_date" class="form-control">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm" >Apply Filter</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Task List Table -->
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>No.</th>
+                <th>Title</th>
+                <th>Due Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="taskList">
+            {% for task in tasks %}
+            <tr>
+                <th scope="row">{{ forloop.counter }}</th>
+                <td>{{task.1}}</td>
+                <td>{{task.3|date:"Y-m-d"}}</td>
+                <td>
+                    <span id="statusText{{ task.0 }}" class="{% if task.4 == 'Incomplete' %}text-danger{% else %}text-success{% endif %}">
+                        {{ task.4 }}
+                    </span>
+                    <input class="form-check-input" type="checkbox" id="toggleStatus{{ task.0 }}" data-task-id="{{ task.0 }}" data-task-status="{{ task.4 }}" {% if task.4 == 'Complete' %} checked {% endif %}>
+                </td>
+                <td>
+                    <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#ViewTaskModal{{task.0}}">View Details</button>
+                </td>
+                <td>
+                    <a  href="{% url 'deletetask' task.0 %}" onclick="alert('Do you want to delete the task?')" class="text-danger">Delete</a>
+                </td>
+              </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Task Modal -->
+<div class="modal fade" id="AddTaskModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addTaskModalLabel">Add Task</h5>
+            </div>
+            <div class="modal-body">
+                <form action='createtask' method="POST">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="title">Title</label>
+                        <input type="text" class="form-control" id="title" name="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="dueDate">Due Date</label>
+                        <input type="date" class="form-control" min="{{ today|date:'Y-m-d' }}" id="dueDate" name="due_date" required>
+                    </div>
+                    <div class="mt-2">
+                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                     <button type="submit" class="btn btn-primary">Add</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Task Details Modal -->
+{% for task in tasks %}
+<div class="modal fade" id="ViewTaskModal{{task.0}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="taskDetailsModalLabel">Task Details</h5>
+            </div>
+            <form action="updatetask"  method="POST">
+                {% csrf_token %}
+            <div class="modal-body" id="taskDetailsContent">
+                <div class="form-group">
+                    <input  name="id" id="id" value="{{task.0}}" hidden>
+                    <label for="taskTitle">Title</label>
+                    <input type="text" class="form-control" id="taskTitle" name="title" value="" placeholder="{{task.1}}">
+                </div>
+                <div class="form-group">
+                    <label for="taskDescription">Description</label>
+                    <textarea class="form-control" id="taskDescription" name="description" placeholder="{{task.2}}" value="" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                   <label for="taskDueDate">Due Date</label>
+                    <input type="text" name="due_date" value="" onfocus="(this.type='date')" min="{{ today|date:'Y-m-d' }}"   onblur="(this.type='text')" id="date" placeholder="{{task.3|date:'d-m-Y'}}" class="form-control" id="taskDueDate">
+                </div>
+                <div class="form-group">
+                    <label for="taskStatus">Status</label>
+                    <select id="statusFilter" name="status" class="form-control">
+                        <option  {% if task.4 == "Incomplete" %} selected  {% endif %} value="Incomplete">Incomplete</option>
+                        <option {% if task.4 == "Complete" %} selected {% endif %}  value="Complete">Complete</option>
+                    </select>               
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="submit" class="btn btn-success" id="markCompleteBtn">Update</button>
+            </div>
+        </form>
+        </div>
+</div>
+</div>
+{% endfor %}
+<script>
+    document.querySelectorAll('.form-check-input').forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            var taskId = this.getAttribute('data-task-id');
+            var taskStatus = this.checked ? 'Complete' : 'Incomplete';
+            console.log('task',taskId)
+            console.log('status',taskStatus)
+            fetch('updatestatus', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'  // Include CSRF token for security
+                },
+                body: JSON.stringify({
+                    id: taskId,
+                    status: taskStatus
+                })
+            }).then(function(response) {
+                if (response.ok) {
+
+                    var statusElement = document.getElementById('statusText' + taskId);
+                    statusElement.textContent =  taskStatus;
+                    if (statusElement.textContent === 'Incomplete') {
+                        statusElement.classList.remove('text-success');
+                        statusElement.classList.add('text-danger');
+                    } else {
+                        statusElement.classList.remove('text-danger');
+                        statusElement.classList.add('text-success');
+                    }
+
+                } else {
+
+                }
+            }).catch(function(error) {
+                console.error('Error:', error);
+            });
+        });
+    });
+</script>
+
+{% endblock %}
